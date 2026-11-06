@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Premier League 2026/27: match probabilities</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f7f3;--ink:#1b2430;--mute:#6b7480;--line:#dcded6;--home:#0f766e;--draw:#b9bfc7;--away:#7a3e6d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,sans-serif;line-height:1.45}
+main{max-width:760px;margin:0 auto;padding:40px 20px 64px}
+h1{font-size:clamp(1.9rem,5vw,2.8rem);font-weight:800;letter-spacing:-.02em;line-height:1.05;margin:0 0 10px}
+.sub{color:var(--mute);margin:0 0 28px;max-width:56ch}
+.legend{display:flex;gap:18px;font-size:.9rem;margin-bottom:18px;flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);margin-bottom:24px}
+.sub{margin-bottom:0}
+select:focus-visible{outline:2px solid var(--home);outline-offset:2px}
+h2{font-size:1rem;font-weight:600;color:var(--mute);margin:28px 0 8px}
+.match{padding:16px 0;border-top:1px solid var(--line)}
+.ko{font-size:.85rem;color:var(--mute);margin-bottom:2px}
+.teams{display:flex;justify-content:space-between;gap:12px;font-weight:600;font-size:1.05rem;margin-bottom:10px}
+.teams span:last-child{text-align:right}
+.bar{display:flex;height:14px;border-radius:3px;overflow:hidden;gap:2px}
+.bar div{min-width:2px}
+.pcts{display:flex;justify-content:space-between;margin-top:6px;font-variant-numeric:tabular-nums;font-size:.95rem;color:var(--mute)}
+.pcts b{color:var(--ink);font-size:1.15rem;font-weight:800}
+.pcts .mid{text-align:center}
+.pcts span:last-child{text-align:right}
+.note{margin-top:36px;font-size:.85rem;color:var(--mute);border-top:1px solid var(--line);padding-top:14px}
+.banner{background:#fff3cd;border:1px solid #e6d48a;border-radius:6px;padding:8px 12px;margin-bottom:20px;font-size:.9rem}
+</style>
+</head>
+<body>
+<main>
+  <h1>Premier League 2026/27: who wins the next match?</h1>
+  <p class="sub">Win, draw and loss probabilities for upcoming fixtures, from a Poisson model fitted on last season's results.</p>
+  <div id="banner"></div>
+  <div class="legend">
+    <span><i style="background:var(--home)"></i>Home win</span>
+    <span><i style="background:var(--draw)"></i>Draw</span>
+    <span><i style="background:var(--away)"></i>Away win</span>
+  </div>
+  <label for="team" class="sub" style="display:block;margin-bottom:6px">Show matches for</label>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
+    <div><label for="round" class="sub" style="display:block;margin-bottom:6px">Matchweek</label><select id="round"><option value="">All matchweeks</option></select></div>
+    <div><label for="team" class="sub" style="display:block;margin-bottom:6px">Team</label><select id="team"><option value="">All teams</option></select></div>
+  </div>
+  <div id="list"></div>
+  <p class="note" id="note"></p>
+</main>
+
+<script src="predictions.js"></script>
+<script>
+// Sample data, used only if predictions.json cannot be loaded. Not real model output.
+const SAMPLE = [
+  {round:10,time:"20:00",date:"2026-11-21",home:"Arsenal",away:"Everton",p_home:0.66,p_draw:0.21,p_away:0.13},
+  {round:10,time:"15:00",date:"2026-11-21",home:"Leeds",away:"Tottenham",p_home:0.29,p_draw:0.26,p_away:0.45},
+  {round:10,time:"16:30",date:"2026-11-22",home:"Coventry",away:"Liverpool",p_home:0.14,p_draw:0.20,p_away:0.66}
+];
+
+const pct = x => Math.round(x * 100);
+const fmtDate = d => new Date(d + "T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
+
+function card(m){
+  const h = pct(m.p_home), d = pct(m.p_draw), a = 100 - h - d;
+  return `<div class="match">
+    ${m.time ? `<div class="ko">${m.time}</div>` : ""}
+    <div class="teams"><span>${m.home}</span><span>${m.away}</span></div>
+    <div class="bar" role="img" aria-label="${m.home} ${h}%, draw ${d}%, ${m.away} ${a}%">
+      <div style="flex:${m.p_home};background:var(--home)"></div>
+      <div style="flex:${m.p_draw};background:var(--draw)"></div>
+      <div style="flex:${m.p_away};background:var(--away)"></div>
+    </div>
+    <div class="pcts"><span><b>${h}%</b></span><span class="mid">Draw ${d}%</span><span><b>${a}%</b></span></div>
+  </div>`;
+}
+
+function render(data, team, round){
+  const rows = data.filter(m => (!team || m.home === team || m.away === team) && (!round || String(m.round) === round));
+  const groups = {};
+  rows.forEach(m => (groups[m.date || ""] ||= []).push(m));
+  const keys = Object.keys(groups).sort();
+  document.getElementById("list").innerHTML = keys.map(k =>
+    (k ? `<h2>${fmtDate(k)}</h2>` : "") + groups[k].map(card).join("")
+  ).join("") || "<p class='sub'>No upcoming matches for this team.</p>";
+}
+
+function init(data, isSample, updated){
+  const teams = [...new Set(data.flatMap(m => [m.home, m.away]))].sort();
+  const sel = document.getElementById("team"), rsel = document.getElementById("round");
+  teams.forEach(t => sel.add(new Option(t, t)));
+  const rounds = [...new Set(data.map(m => m.round).filter(Boolean))].sort((a, b) => a - b);
+  rounds.forEach(r => rsel.add(new Option("Matchweek " + r, r)));
+  if (rounds.length) rsel.value = String(rounds[0]); // default to the next matchweek
+  const go = () => render(data, sel.value, rsel.value);
+  sel.onchange = go; rsel.onchange = go;
+  go();
+  if (isSample) document.getElementById("banner").innerHTML =
+    '<div class="banner">Showing sample data. Add predictions.js next to this page to show real predictions.</div>';
+  document.getElementById("note").textContent =
+    "Probabilities come from a statistical model and are not betting advice." + (updated ? " Last updated " + updated + "." : "");
+}
+
+if (window.PREDICTIONS) {
+  // predictions.js loaded: works even when this page is opened by double-clicking it
+  init(window.PREDICTIONS.fixtures, false, window.PREDICTIONS.updated);
+} else {
+  fetch("predictions.json", {cache:"no-store"})
+    .then(r => { if (!r.ok) throw 0; return r.json(); })
+    .then(j => init(j.fixtures || j, false, j.updated))
+    .catch(() => init(SAMPLE, true));
+}
+</script>
+</body>
+</html>
