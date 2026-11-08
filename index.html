@@ -87,7 +87,7 @@ tbody tr:nth-child(even){background:#faf8fb}
 <header class="top">
   <div class="wrap">
     <h1>Premier League 2026/27: who wins the next match?</h1>
-    <p class="intro">Win, draw and loss probabilities for upcoming fixtures, from a Poisson model fitted on last season's results.</p>
+    <p class="intro">Win, draw and loss probabilities for upcoming fixtures, from a Poisson model fitted on the last two seasons and this season so far.</p>
   </div>
 </header>
 <main>
@@ -114,8 +114,10 @@ tbody tr:nth-child(even){background:#faf8fb}
   </div>
   <section class="how">
     <h2>How this works</h2>
-    <p>The model studies every match from last season to estimate how many goals each team scores and concedes, plus a boost for playing at home. Newly promoted teams get the average strength of last season's promoted teams.</p>
-    <p>For each fixture it turns those strengths into expected goals, then adds up the chance of every possible scoreline to get the win, draw and loss probabilities.</p>
+    <p>The model studies every match from this season so far and the two seasons before it to estimate how many goals each team scores and concedes, plus a boost for playing at home. Each season gets a fixed weight, with more recent seasons counting for more than older ones. The weights are set by hand and reviewed as the season goes on, so this season's results count for more as it unfolds.</p>
+    <p>Newly promoted teams have no recent top-flight record of their own, so their strength blends three things: their results this season, how the teams promoted last season performed, and how the teams promoted the season before performed. The same season weights apply.</p>
+    <p>Each club can also carry a small manual adjustment, for example after an injury to a key player. It lowers the team's expected goals and raises its opponents', or the reverse when the adjustment is positive. Most clubs have no adjustment.</p>
+    <p>For each fixture the model turns those strengths into expected goals, then adds up the chance of every possible scoreline to get the win, draw and loss probabilities.</p>
     <p>The projected table adds the points teams have already won to the expected points (3 × chance of a win + 1 × chance of a draw) from the matches still to play.</p>
   </section>
   <p class="note" id="note"></p>
